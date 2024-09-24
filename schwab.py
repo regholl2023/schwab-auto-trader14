@@ -235,6 +235,79 @@ def stream_data():
 
     asyncio.run(read_stream())
 
+def _params_parser(self, params):
+        """
+        Removes None (null) values
+        :param params: params to remove None values from
+        :type params: dict
+        :return: params without None values
+        :rtype: dict
+        """
+        for key in list(params.keys()):
+            if params[key] is None: del params[key]
+        return params
+
+
+def time_convert(self, dt=None, form="8601"):
+        """
+        Convert time to the correct format, passthrough if a string, preserve None if None for params parser
+        :param dt: datetime.pyi object to convert
+        :type dt: datetime.pyi
+        :param form: what to convert input to
+        :type form: str
+        :return: converted time or passthrough
+        :rtype: str | None
+        """
+        if dt is None or isinstance(dt, str):
+            return dt
+        elif form == "8601":  # assume datetime object from here on
+            return f'{dt.isoformat()[:-9]}Z'
+        elif form == "epoch":
+            return int(dt.timestamp())
+        elif form == "epoch_ms":
+            return int(dt.timestamp() * 1000)
+        elif form == "YYYY-MM-DD":
+            return dt.strftime("%Y-%m-%d")
+        else:
+            return dt
+
+
+def get_data_test(token):
+    _base_api_url = "https://api.schwabapi.com"
+    symbol = 'QQQ'
+    periodType = 'day|month|year'
+    frequencyType = 'daily'
+    period = "10"
+    periodType = 'period'
+    frequency = 10
+    startDate = "09|20|24"
+    endDate = "09|23|24"
+    needExtendedHoursData = False
+    needPreviousClose = False
+
+    periodType = None
+    frequencyType = None
+    period = None
+    periodType = None
+    frequency = None
+    startDate = None
+    endDate = None
+    needExtendedHoursData = None
+    needPreviousClose = None
+
+
+
+    return requests.get(f'{_base_api_url}/marketdata/v1/pricehistory',
+                            headers={'Authorization': f'Bearer {token}'},
+                            params=_params_parser({'symbol': symbol, 'periodType': periodType, 'period': period,
+                                                        'frequencyType': frequencyType, 'frequency': frequency,
+                                                        'startDate': time_convert(startDate, 'epoch_ms'),
+                                                        'endDate': time_convert(endDate, 'epoch_ms'),
+                                                        'needExtendedHoursData': needExtendedHoursData,
+                                                        'needPreviousClose': needPreviousClose}),
+                            timeout=5)
+
+
 
 
 if __name__ == "__main__":
