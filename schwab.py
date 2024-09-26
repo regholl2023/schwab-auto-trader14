@@ -5,12 +5,13 @@
 import os
 import base64
 import requests
-import webbrowserp
+import webbrowser
 from loguru import logger
 import pandas
 from typing import Optional
 import asyncio
 import json
+import yaml 
 
 
 class AccountsTrading:
@@ -40,12 +41,12 @@ class AccountsTrading:
 
 
 def construct_init_auth_url() -> tuple[str, str, str]:
+    file_path='/Users/cal/desktop/stinky-schwab.yaml'
+    try:
+        app_key, app_secret = read_stinky_yaml(file_path)
+    except Exception as e:
+        print(f"Error: {e}")
     
-    #app_key = "your-app-key"
-    app_key = ''
-    #app_secret = "your-app-secret"
-    app_secret =  ''
-
     auth_url = f"https://api.schwabapi.com/v1/oauth/authorize?client_id={app_key}&redirect_uri=https://127.0.0.1"
 
     logger.info("Click to authenticate:")
@@ -124,6 +125,27 @@ def refresh_tokens():
     logger.info("Token dict refreshed.")
 
     return "Done!"
+
+
+def read_stinky_yaml(file_path):
+    # Check if file exists
+    if not os.path.exists(file_path):
+        raise FileNotFoundError(f"The file '{file_path}' does not exist.")
+    
+    # Open and load the YAML file
+    with open(file_path, 'r') as file:
+        data = yaml.safe_load(file)
+
+    # Check if two specific variables exist in the file
+    if 'app_key' not in data or 'app_secret' not in data:
+        raise KeyError("Required variables 'variable1' and 'variable2' are missing from the file.")
+    
+    # Retrieve the variables
+    app_key = data['app_key']
+    app_secret = data['app_secret']
+
+    return app_key, app_secret
+
 
 def main():
     app_key, app_secret, cs_auth_url = construct_init_auth_url()
@@ -235,7 +257,7 @@ def stream_data():
 
     asyncio.run(read_stream())
 
-def _params_parser(self, params):
+def _params_parser(params):
         """
         Removes None (null) values
         :param params: params to remove None values from
@@ -272,10 +294,10 @@ def time_convert(self, dt=None, form="8601"):
             return dt
 
 
-def get_data_test(token):
+def get_data_test():
     _base_api_url = "https://api.schwabapi.com"
-    symbol = 'QQQ'
-    periodType = 'day|month|year'
+    symbol = "AAPL"
+    periodType = "year"
     frequencyType = 'daily'
     period = "10"
     periodType = 'period'
@@ -295,21 +317,30 @@ def get_data_test(token):
     needExtendedHoursData = None
     needPreviousClose = None
 
+    token = 'I0.b2F1dGgyLmNkYy5zY2h3YWIuY29t.sKiqgnwxekY8lchdt3F3p2hvpSRpgzIvMFkFfiziMZU@'
+
+    #resp = requests.get('https://api.schwabapi.com/marketdata/v1/pricehistory?symbol=AAPL&periodType=year&period=1&frequencyType=daily&frequency=1&startDate=1722367119&endDate=1723490319&needExtendedHoursData=false&needPreviousClose=false',
+
+    #headers={'Authorization': 'Bearer some_access_token_here'})
 
 
-    return requests.get(f'{_base_api_url}/marketdata/v1/pricehistory',
+
+    data = requests.get(f'{_base_api_url}/marketdata/v1/pricehistory',
                             headers={'Authorization': f'Bearer {token}'},
-                            params=_params_parser({'symbol': symbol, 'periodType': periodType, 'period': period,
-                                                        'frequencyType': frequencyType, 'frequency': frequency,
-                                                        'startDate': time_convert(startDate, 'epoch_ms'),
-                                                        'endDate': time_convert(endDate, 'epoch_ms'),
-                                                        'needExtendedHoursData': needExtendedHoursData,
-                                                        'needPreviousClose': needPreviousClose}),
-                            timeout=5)
-
+                            params=({'symbol': 'AAPL'}))
+                            #params=_params_parser({'symbol': symbol, 'periodType': periodType, 'period': period,
+                            #                            'frequencyType': frequencyType, 'frequency': frequency,
+                            #                            'startDate': time_convert(startDate, 'epoch_ms'),
+                            #                            'endDate': time_convert(endDate, 'epoch_ms'),
+                            #                            'needExtendedHoursData': needExtendedHoursData,
+                            #                            'needPreviousClose': needPreviousClose}),timeout=5)
+    
+    print(data.json())
+    
 
 
 
 if __name__ == "__main__":
-    get_data()
+    #print(get_data_test.json())
+    #get_data_test()
     main()
