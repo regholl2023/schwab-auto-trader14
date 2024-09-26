@@ -342,5 +342,5 @@ def get_data_test():
 
 if __name__ == "__main__":
     #print(get_data_test.json())
-    get_data_test()
-    #main()
+    #get_data_test()
+    main()
