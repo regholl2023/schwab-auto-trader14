@@ -317,7 +317,7 @@ def get_data_test():
     needExtendedHoursData = None
     needPreviousClose = None
 
-    token = 'I0.b2F1dGgyLmNkYy5zY2h3YWIuY29t.sKiqgnwxekY8lchdt3F3p2hvpSRpgzIvMFkFfiziMZU@'
+    token = ''
 
     #resp = requests.get('https://api.schwabapi.com/marketdata/v1/pricehistory?symbol=AAPL&periodType=year&period=1&frequencyType=daily&frequency=1&startDate=1722367119&endDate=1723490319&needExtendedHoursData=false&needPreviousClose=false',
 
@@ -335,12 +335,12 @@ def get_data_test():
                             #                            'needExtendedHoursData': needExtendedHoursData,
                             #                            'needPreviousClose': needPreviousClose}),timeout=5)
     
-    print(data.json())
+    print(data)
     
 
 
 
 if __name__ == "__main__":
     #print(get_data_test.json())
-    #get_data_test()
-    main()
+    get_data_test()
+    #main()
