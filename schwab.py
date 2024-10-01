@@ -1,18 +1,24 @@
 # Schwab Auto Trader
-# To use this app one must have an schwab developer account. 
+# To use this app one must have an schwab developer account, see README.md for details.
+# Author: Calvin Seamons
+# Last Updated: 1 October, 2024
 
 # Imports
-import os
+import argparse
+import asyncio
 import base64
+import json
+import os
+import pandas
 import requests
 import webbrowser
-from loguru import logger
-import pandas
-from typing import Optional
-import asyncio
-import json
 import yaml 
 
+# From Imports 
+from loguru import logger
+from typing import Optional
+
+VERSION = '0.0.1' # Script is very much inreleased and in development. 
 
 class AccountsTrading:
     def __init__(self):
@@ -145,26 +151,6 @@ def read_stinky_yaml(file_path):
     app_secret = data['app_secret']
 
     return app_key, app_secret
-
-
-def main():
-    app_key, app_secret, cs_auth_url = construct_init_auth_url()
-    webbrowser.open(cs_auth_url)
-
-    logger.info("Paste Returned URL:")
-    returned_url = input()
-
-    init_token_headers, init_token_payload = construct_headers_and_payload(
-        returned_url, app_key, app_secret
-    )
-
-    init_tokens_dict = retrieve_tokens(
-        headers=init_token_headers, payload=init_token_payload
-    )
-
-    logger.debug(init_tokens_dict)
-
-    return "Done!"
 
 def get_data():
 
@@ -321,9 +307,6 @@ def get_data_test():
 
     #resp = requests.get('https://api.schwabapi.com/marketdata/v1/pricehistory?symbol=AAPL&periodType=year&period=1&frequencyType=daily&frequency=1&startDate=1722367119&endDate=1723490319&needExtendedHoursData=false&needPreviousClose=false',
 
-    #headers={'Authorization': 'Bearer some_access_token_here'})
-
-
 
     data = requests.get(f'{_base_api_url}/marketdata/v1/pricehistory',
                             headers={'Authorization': f'Bearer {token}'},
@@ -336,11 +319,31 @@ def get_data_test():
                             #                            'needPreviousClose': needPreviousClose}),timeout=5)
     
     print(data)
-    
 
+def main(args):
 
+    if args.startup == True: # If startup we kicked schwab authentication. 
+        app_key, app_secret, cs_auth_url = construct_init_auth_url()
+        webbrowser.open(cs_auth_url)
+
+        logger.info("Paste Returned URL:")
+        returned_url = input()
+
+        init_token_headers, init_token_payload = construct_headers_and_payload(returned_url, app_key, app_secret)
+        init_tokens_dict = retrieve_tokens(headers=init_token_headers, payload=init_token_payload)
+        logger.debug(init_tokens_dict)
+        
+    else:
+        print("Nothing to do")
 
 if __name__ == "__main__":
-    #print(get_data_test.json())
-    #get_data_test()
-    main()
+
+    parser = argparse.ArgumentParser(description="Args for schwab-auto-trader")
+    parser.add_argument("--set-encryption-file", action='store_true', default=False, help="Create keyfile for app secret/id storage. Only need to run once.")
+    parser.add_argument("--startup","-s", action='store_true', default=False, help="Kickoff flag to authenticate with schwab, run when first launching script.")
+    parser.add_argument("--get-token-time","-gtt", action='store_true', default=False, help="Returns remaining authentication time with schwab token.")
+    parser.add_argument("--refresh-token","-rt", action='store_true', default=False, help="Manually reset Authentication Token expiration timer.")
+    parser.add_argument("-auto-refresh-token", type=bool, default=True, help="Set to false will result in one 30min authentication session.")
+    args = parser.parse_args()
+
+    main(args)
