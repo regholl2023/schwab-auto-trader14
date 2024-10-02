@@ -18,7 +18,7 @@ import yaml
 from loguru import logger
 from typing import Optional
 
-VERSION = '0.0.1' # Script is very much inreleased and in development. 
+VERSION = '0.0.1' # Script is very much unreleased and in development. 
 
 class AccountsTrading:
     def __init__(self):
@@ -151,30 +151,6 @@ def read_stinky_yaml(file_path):
     app_secret = data['app_secret']
 
     return app_key, app_secret
-
-def get_data():
-
-    access_token=''
-
-    url = 'https://api.schwab.com/v1/quotes?symbol=QQQ'
-
-    # Headers for authorization
-    headers = {
-        'Authorization': f'Bearer {access_token}',
-        'Content-Type': 'application/json'
-    }
-
-    # Make the request to Schwab API
-    response = requests.get(url, headers=headers)
-
-    # Check if the request was successful
-    if response.status_code == 200:
-        data = response.json()
-        last_price = data.get('lastPrice', 'N/A')  # Replace 'lastPrice' with the correct field if needed
-        print(f'The current price of QQQ is: ${last_price}')
-    else:
-        print(f'Error fetching data: {response.status_code}')
-
 
 def design_order(
     symbol,
