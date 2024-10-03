@@ -3,7 +3,7 @@
 # Author: Calvin Seamons
 # Last Updated: 1 October, 2024
 
-# Imports
+# Library Imports
 import argparse
 import asyncio
 import base64
@@ -14,9 +14,13 @@ import requests
 import webbrowser
 import yaml 
 
-# From Imports 
+# Library From Imports 
 from loguru import logger
 from typing import Optional
+
+# File Imports
+import encryption.py as encrypt
+import refresh.py as refresh
 
 VERSION = '0.0.1' # Script is very much unreleased and in development. 
 
@@ -49,7 +53,7 @@ class AccountsTrading:
 def construct_init_auth_url() -> tuple[str, str, str]:
     file_path='/Users/cal/desktop/stinky-schwab.yaml'
     try:
-        app_key, app_secret = read_stinky_yaml(file_path)
+        app_key, app_secret = read_yaml(file_path)
     except Exception as e:
         print(f"Error: {e}")
     
@@ -92,48 +96,7 @@ def retrieve_tokens(headers, payload) -> dict:
 
     return init_tokens_dict
 
-def refresh_tokens():
-    logger.info("Initializing...")
-
-    app_key = "your-app-key"
-    app_secret = "your-app-secret"
-
-    # You can pull this from a local file,
-    # Google Cloud Firestore/Secret Manager, etc.
-    refresh_token_value = "your-current-refresh-token"
-
-    payload = {
-        "grant_type": "refresh_token",
-        "refresh_token": refresh_token_value,
-    }
-    headers = {
-        "Authorization": f'Basic {base64.b64encode(f"{app_key}:{app_secret}".encode()).decode()}',
-        "Content-Type": "application/x-www-form-urlencoded",
-    }
-
-    refresh_token_response = requests.post(
-        url="https://api.schwabapi.com/v1/oauth/token",
-        headers=headers,
-        data=payload,
-    )
-    if refresh_token_response.status_code == 200:
-        logger.info("Retrieved new tokens successfully using refresh token.")
-    else:
-        logger.error(
-            f"Error refreshing access token: {refresh_token_response.text}"
-        )
-        return None
-
-    refresh_token_dict = refresh_token_response.json()
-
-    logger.debug(refresh_token_dict)
-
-    logger.info("Token dict refreshed.")
-
-    return "Done!"
-
-
-def read_stinky_yaml(file_path):
+def read_yaml(file_path):
     # Check if file exists
     if not os.path.exists(file_path):
         raise FileNotFoundError(f"The file '{file_path}' does not exist.")
@@ -297,6 +260,9 @@ def get_data_test():
     print(data)
 
 def main(args):
+
+    if args.set_encryption_file == True: #
+        encrypt.setup()
 
     if args.startup == True: # If startup we kicked schwab authentication. 
         app_key, app_secret, cs_auth_url = construct_init_auth_url()

@@ -1,4 +1,5 @@
 from cryptography.fernet import Fernet
+import Path
 import yaml
 
 # Generate a key and write it to a file (do this only once)
@@ -53,3 +54,11 @@ your_variable = decrypted_data['your_key']
 
 print(decrypted_data)  # Display the decrypted YAML content
 print(f"Assigned Variable: {your_variable}")
+
+
+def setup():
+
+    path_to_key = Path("Users/cal/Desktop/schwab-stinky.yaml")
+    if path_to_key.is_file():
+        print("fuuuhhhrrrrrrr")
+    
