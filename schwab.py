@@ -1,7 +1,7 @@
 # Schwab Auto Trader
 # To use this app one must have an schwab developer account, see README.md for details.
 # Author: Calvin Seamons
-# Last Updated: 1 October, 2024
+# Last Updated: 8 October, 2024
 
 # Library Imports
 import argparse
@@ -17,10 +17,11 @@ import yaml
 # Library From Imports 
 from loguru import logger
 from typing import Optional
+from pathlib import Path
 
 # File Imports
-import encryption.py as encrypt
-import refresh.py as refresh
+from encryption import set_encryption, retrieve_encrypted_data
+#from refresh.py as refresh
 
 VERSION = '0.0.1' # Script is very much unreleased and in development. 
 
@@ -260,9 +261,25 @@ def get_data_test():
     print(data)
 
 def main(args):
+    # Main's function is to address all flags thrown in the argparser, once finished launch the acutal trade commands listed in the trade.py 
 
-    if args.set_encryption_file == True: #
-        encrypt.setup()
+    # Address path definition and install. 
+    install_path = Path(args.path)
+    if install_path.exists():
+        pass # We have the path that's all we care about.
+    else: 
+        os.makedirs(install_path, exist_ok=True) 
+        schwab_file = Path.joinpath(install_path, 'schwab-credentials.yaml')
+        print("We've detected an Empty Schwab Credential file! This will be saved in an encryped file at "+str(schwab_file))
+        app_key = input("Please provide your APP_KEY (found on developer.schwab.com): ")
+        app_secret = input("Please provide your APP_SECRET (found on developer.schwab.com): ")
+        data = {'app_key': app_key, 'app_secret': app_secret}
+
+        with open(schwab_file, 'w') as yaml_file:
+            yaml.dump(data, yaml_file, default_flow_style=False)
+
+        
+
 
     if args.startup == True: # If startup we kicked schwab authentication. 
         app_key, app_secret, cs_auth_url = construct_init_auth_url()
@@ -273,19 +290,27 @@ def main(args):
 
         init_token_headers, init_token_payload = construct_headers_and_payload(returned_url, app_key, app_secret)
         init_tokens_dict = retrieve_tokens(headers=init_token_headers, payload=init_token_payload)
-        logger.debug(init_tokens_dict)
+        #logger.debug(init_tokens_dict)
+
+        tokens_file = Path.joinpath(install_path, 'tokens.yaml')
+        with open(tokens_file, 'w') as yaml_file:
+            yaml.dump(init_tokens_dict, yaml_file, default_flow_style=False)
+    
+    
+    #if args.encryption == True: # Encrypt all schwab files.
+    #    set_encryption(install_path)
+    retrieve_encrypted_data(install_path)
         
-    else:
-        print("Nothing to do")
 
 if __name__ == "__main__":
-
+    # Arguemnts that you can pass in with "python3 schwab.py --startup etc etc", self explanitory.
     parser = argparse.ArgumentParser(description="Args for schwab-auto-trader")
-    parser.add_argument("--set-encryption-file", action='store_true', default=False, help="Create keyfile for app secret/id storage. Only need to run once.")
+    parser.add_argument("--encryption", "-e", action='store_true', default=True, help="Create keyfile for app secret/id storage. Only need to run once.")
     parser.add_argument("--startup","-s", action='store_true', default=False, help="Kickoff flag to authenticate with schwab, run when first launching script.")
     parser.add_argument("--get-token-time","-gtt", action='store_true', default=False, help="Returns remaining authentication time with schwab token.")
     parser.add_argument("--refresh-token","-rt", action='store_true', default=False, help="Manually reset Authentication Token expiration timer.")
-    parser.add_argument("-auto-refresh-token", type=bool, default=True, help="Set to false will result in one 30min authentication session.")
+    parser.add_argument("--auto-refresh-token", type=bool, default=True, help="Set to false will result in one 30min authentication session.")
+    parser.add_argument("--path", type=str, default=os.path.expanduser('~/.schwab_auto_trader'), help="Default directory where files will be installed.")
     args = parser.parse_args()
 
     main(args)
