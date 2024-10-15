@@ -55,7 +55,7 @@ def decrypt_file_with_password(file_path, password):
     except InvalidToken:
         print("Uh oh, looks like your encryption password was wrong. \n" 
               "If you forget this it's okay to just blowaway the credentials, use --startup. and redo the schwab login.")
-        return None
+        exit()
 
 def is_file_encrypted(file_path):
     if not os.path.isfile(file_path):
@@ -73,9 +73,9 @@ def set_encryption(file_path):
     encrypt_file_with_password(app_path, password)
     encrypt_file_with_password(token_path, password)
 
-def retrieve_encrypted_data(file_path):
-    password = getpass("Enter the encryption password.")
-    token_path = os.path.join(file_path, "tokens.yaml")
+def retrieve_encrypted_data(password, file_path):
+    password = password
+    #token_path = os.path.join(file_path, "tokens.yaml")
     decrypted_data = decrypt_file_with_password(token_path, password)
     # Just a print to test if data is corrently decrypted.
     #print(decrypted_data)
