@@ -1,7 +1,7 @@
 # Schwab Auto Trader
 # To use this app one must have an schwab developer account, see README.md for details.
 # Author: Calvin Seamons
-# Last Updated: 8 October, 2024
+# Last Updated: 15 October, 2024
 
 # Library Imports
 import argparse
@@ -11,19 +11,24 @@ import json
 import os
 import pandas
 import requests
+import threading
+import time
 import webbrowser
 import yaml 
 
 # Library From Imports 
+from getpass import getpass
 from loguru import logger
 from typing import Optional
 from pathlib import Path
 
-# File Imports
-from encryption import set_encryption, retrieve_encrypted_data
+# Local File Imports
+from encryption import set_encryption, retrieve_encrypted_data, encrypt_file_with_password, decrypt_file_with_password
 #from refresh.py as refresh
 
+# Global Variables :(
 VERSION = '0.0.1' # Script is very much unreleased and in development. 
+TOKEN_TIME = -1 # Global time decay of auth_token for schwab, if this hits zero trading will halt.
 
 class AccountsTrading:
     def __init__(self):
@@ -51,10 +56,13 @@ class AccountsTrading:
         self.account_hash_value = response_frame["hashValue"].iloc[0]
 
 
-def construct_init_auth_url() -> tuple[str, str, str]:
-    file_path='/Users/cal/desktop/stinky-schwab.yaml'
+def construct_init_auth_url(password, install_path) -> tuple[str, str, str]:
+    file_path=install_path
+    file_path = os.path.join(install_path, 'schwab-credentials.yaml')
     try:
-        app_key, app_secret = read_yaml(file_path)
+        data = decrypt_file_with_password(file_path, password)
+        app_key = data['app_key']
+        app_secret = data['app_secret']
     except Exception as e:
         print(f"Error: {e}")
     
@@ -264,25 +272,51 @@ def main(args):
     # Main's function is to address all flags thrown in the argparser, once finished launch the acutal trade commands listed in the trade.py 
 
     # Address path definition and install. 
+    # Getting this all organized is fucking stupid. 
+    # ------------------------------------------- #
+    # 0.5 Check and see if encryption key is set, if not have them make a new one or use the one they set.
+    # 1) Check if the .schwab_auto_trader/ dir exists
+    # 2) If not (-s) check if the token_file is still valid, then run trade code, if not prompt for startup.
+    # 3) is (-s) check credentials, if empty fill in, then run code for token, then commence trade code.
+    # ------------------------------------------- #  
+
+    password = getpass("Enter encryption password to secure schwab-credentials and schwab-tokens.\n"
+                       "If you have already entered this, please submit the password you set. ")
+
     install_path = Path(args.path)
-    if install_path.exists():
-        pass # We have the path that's all we care about.
-    else: 
-        os.makedirs(install_path, exist_ok=True) 
-        schwab_file = Path.joinpath(install_path, 'schwab-credentials.yaml')
-        print("We've detected an Empty Schwab Credential file! This will be saved in an encryped file at "+str(schwab_file))
-        app_key = input("Please provide your APP_KEY (found on developer.schwab.com): ")
-        app_secret = input("Please provide your APP_SECRET (found on developer.schwab.com): ")
-        data = {'app_key': app_key, 'app_secret': app_secret}
+    if args.startup == False:
+        if install_path.exists(): # Check that ".schwab_auto_trade" exists in ~
+            token_path = os.path.join(install_path, "tokens.yaml")
+            if os.path.isfile(token_path): # Check if tokens.yaml is there and how old it is, if > 1800 it's expired. 
+                exp = os.path.getmtime(token_path)
+                current_time = time.time()
+                token_age = current_time - exp # Age of tokens is current time minus the last modified time of tokens.yaml. 
+                if token_age > 1700:
+                    print("Uh oh, looks like your token is expired you fucking RETARD!")
+                    print("Try running --startup or -s, you'll be prompted to sign into schwab again.")
+                    exit()
+            else:
+                print("Ready to execute trade scripts!")
+                #execute_trade() # Doesn't exist yet. 
+                exit()
+                
 
-        with open(schwab_file, 'w') as yaml_file:
-            yaml.dump(data, yaml_file, default_flow_style=False)
-
-        
+            pass # We have the path that's all we care about.
+        else: 
+            os.makedirs(install_path, exist_ok=True) 
+            schwab_file = Path.joinpath(install_path, 'schwab-credentials.yaml') # If schwab app info missing we gotta ask for it and save the file.
+            if os.path.getsize(schwab_file) == 0: # schwab-credentials appears empty 
+                print("We've detected an Empty Schwab Credential file! This will be saved in an encryped file at "+str(schwab_file))
+                app_key = input("Please provide your APP_KEY (found on developer.schwab.com): ")
+                app_secret = input("Please provide your APP_SECRET (found on developer.schwab.com): ")
+                data = {'app_key': app_key, 'app_secret': app_secret}
+                with open(schwab_file, 'w') as yaml_file:
+                    yaml.dump(data, yaml_file, default_flow_style=False)
+                encrypt_file_with_password(password, schwab_file)
 
 
     if args.startup == True: # If startup we kicked schwab authentication. 
-        app_key, app_secret, cs_auth_url = construct_init_auth_url()
+        app_key, app_secret, cs_auth_url = construct_init_auth_url(password, install_path)
         webbrowser.open(cs_auth_url)
 
         logger.info("Paste Returned URL:")
@@ -292,20 +326,25 @@ def main(args):
         init_tokens_dict = retrieve_tokens(headers=init_token_headers, payload=init_token_payload)
         #logger.debug(init_tokens_dict)
 
+        
         tokens_file = Path.joinpath(install_path, 'tokens.yaml')
+        if os.path.exists(install_path) and os.path.isfile(tokens_file): #We are resetting tokens so delete if present. 
+            os.remove(tokens_file)
+
         with open(tokens_file, 'w') as yaml_file:
             yaml.dump(init_tokens_dict, yaml_file, default_flow_style=False)
+
+        encrypt_file_with_password(tokens_file, password)
     
-    
-    #if args.encryption == True: # Encrypt all schwab files.
-    #    set_encryption(install_path)
-    retrieve_encrypted_data(install_path)
+    if args.encryption == True: # Encrypt all schwab files.
+        set_encryption(install_path)
+    #retrieve_encrypted_data(install_path)
         
 
 if __name__ == "__main__":
     # Arguemnts that you can pass in with "python3 schwab.py --startup etc etc", self explanitory.
     parser = argparse.ArgumentParser(description="Args for schwab-auto-trader")
-    parser.add_argument("--encryption", "-e", action='store_true', default=True, help="Create keyfile for app secret/id storage. Only need to run once.")
+    parser.add_argument("--encryption", "-e", action='store_true', default=False, help="Create keyfile for app secret/id storage. Only need to run once.")
     parser.add_argument("--startup","-s", action='store_true', default=False, help="Kickoff flag to authenticate with schwab, run when first launching script.")
     parser.add_argument("--get-token-time","-gtt", action='store_true', default=False, help="Returns remaining authentication time with schwab token.")
     parser.add_argument("--refresh-token","-rt", action='store_true', default=False, help="Manually reset Authentication Token expiration timer.")
