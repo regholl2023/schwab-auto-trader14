@@ -24,7 +24,11 @@ from pathlib import Path
 
 # Local File Imports
 from encryption import set_encryption, retrieve_encrypted_data, encrypt_file_with_password, decrypt_file_with_password
+from refresh import refresh_tokens
 #from refresh.py as refresh
+
+from dotenv import load_dotenv
+
 
 # Global Variables :(
 VERSION = '0.0.1' # Script is very much unreleased and in development. 
@@ -56,11 +60,11 @@ class AccountsTrading:
         self.account_hash_value = response_frame["hashValue"].iloc[0]
 
 
-def construct_init_auth_url(password, install_path) -> tuple[str, str, str]:
+def construct_init_auth_url(install_path) -> tuple[str, str, str]:
     file_path=install_path
     file_path = os.path.join(install_path, 'schwab-credentials.yaml')
     try:
-        data = decrypt_file_with_password(file_path, password)
+        data = decrypt_file_with_password(file_path)
         app_key = data['app_key']
         app_secret = data['app_secret']
     except Exception as e:
@@ -251,7 +255,8 @@ def get_data_test():
     needExtendedHoursData = None
     needPreviousClose = None
 
-    token = ''
+    token = os.getenv('secret_access_token')
+    
 
     #resp = requests.get('https://api.schwabapi.com/marketdata/v1/pricehistory?symbol=AAPL&periodType=year&period=1&frequencyType=daily&frequency=1&startDate=1722367119&endDate=1723490319&needExtendedHoursData=false&needPreviousClose=false',
 
@@ -266,7 +271,8 @@ def get_data_test():
                             #                            'needExtendedHoursData': needExtendedHoursData,
                             #                            'needPreviousClose': needPreviousClose}),timeout=5)
     
-    print(data)
+    json_info = data.json()
+    print(json_info)
 
 def main(args):
     # Main's function is to address all flags thrown in the argparser, once finished launch the acutal trade commands listed in the trade.py 
@@ -282,8 +288,18 @@ def main(args):
 
     password = getpass("Enter encryption password to secure schwab-credentials and schwab-tokens.\n"
                        "If you have already entered this, please submit the password you set. ")
+    os.environ['super_secret_sauce'] = password
 
     install_path = Path(args.path)
+    if args.get_cred == True:
+        if install_path.exists(): # Check that ".schwab_auto_trade" exists in ~
+            token_path = os.path.join(install_path, "tokens.yaml")
+            if os.path.isfile(token_path):
+                data = decrypt_file_with_password(token_path)
+                os.environ['secret_access_token'] = data['access_token']
+                os.environ['secret_refresh_token'] = data['refresh_token']
+                print(data)
+
     if args.startup == False:
         if install_path.exists(): # Check that ".schwab_auto_trade" exists in ~
             token_path = os.path.join(install_path, "tokens.yaml")
@@ -295,9 +311,13 @@ def main(args):
                     print("Uh oh, looks like your token is expired you fucking RETARD!")
                     print("Try running --startup or -s, you'll be prompted to sign into schwab again.")
                     exit()
+                else:
+                    print("Ready to execute trade scripts!")
+                    get_data_test()
+                    #execute_trade() # Doesn't exist yet. 
+                    exit()
             else:
-                print("Ready to execute trade scripts!")
-                #execute_trade() # Doesn't exist yet. 
+                print("Tokens.yaml is missing, run python3 schwab.py (-s or --startup)")
                 exit()
                 
 
@@ -312,11 +332,11 @@ def main(args):
                 data = {'app_key': app_key, 'app_secret': app_secret}
                 with open(schwab_file, 'w') as yaml_file:
                     yaml.dump(data, yaml_file, default_flow_style=False)
-                encrypt_file_with_password(password, schwab_file)
+                encrypt_file_with_password(schwab_file)
 
 
     if args.startup == True: # If startup we kicked schwab authentication. 
-        app_key, app_secret, cs_auth_url = construct_init_auth_url(password, install_path)
+        app_key, app_secret, cs_auth_url = construct_init_auth_url(install_path)
         webbrowser.open(cs_auth_url)
 
         logger.info("Paste Returned URL:")
@@ -325,7 +345,6 @@ def main(args):
         init_token_headers, init_token_payload = construct_headers_and_payload(returned_url, app_key, app_secret)
         init_tokens_dict = retrieve_tokens(headers=init_token_headers, payload=init_token_payload)
         #logger.debug(init_tokens_dict)
-
         
         tokens_file = Path.joinpath(install_path, 'tokens.yaml')
         if os.path.exists(install_path) and os.path.isfile(tokens_file): #We are resetting tokens so delete if present. 
@@ -334,7 +353,7 @@ def main(args):
         with open(tokens_file, 'w') as yaml_file:
             yaml.dump(init_tokens_dict, yaml_file, default_flow_style=False)
 
-        encrypt_file_with_password(tokens_file, password)
+        encrypt_file_with_password(tokens_file)
     
     if args.encryption == True: # Encrypt all schwab files.
         set_encryption(install_path)
@@ -350,6 +369,7 @@ if __name__ == "__main__":
     parser.add_argument("--refresh-token","-rt", action='store_true', default=False, help="Manually reset Authentication Token expiration timer.")
     parser.add_argument("--auto-refresh-token", type=bool, default=True, help="Set to false will result in one 30min authentication session.")
     parser.add_argument("--path", type=str, default=os.path.expanduser('~/.schwab_auto_trader'), help="Default directory where files will be installed.")
+    parser.add_argument("--get-cred", action='store_true', default=False, help="Display token credentials if present.")
     args = parser.parse_args()
 
     main(args)

@@ -26,7 +26,8 @@ def derive_key_from_password(password, salt):
     key = base64.urlsafe_b64encode(kdf.derive(password.encode()))
     return key 
 
-def encrypt_file_with_password(file_path, password):
+def encrypt_file_with_password(file_path):
+    password = os.getenv("super_secret_sauce")
     salt = os.urandom(16)  # Generate a new salt
     key = derive_key_from_password(password, salt)
     fernet = Fernet(key)
@@ -40,7 +41,8 @@ def encrypt_file_with_password(file_path, password):
     with open(file_path, 'wb') as encrypted_file:
         encrypted_file.write(salt + encrypted_data)
 
-def decrypt_file_with_password(file_path, password):
+def decrypt_file_with_password(file_path):
+    password = os.getenv("super_secret_sauce")
     try:
         with open(file_path, 'rb') as encrypted_file:
             # First 16 bytes are the salt
