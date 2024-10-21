@@ -44,14 +44,6 @@ class AccountsTrading:
         self.headers = {"Authorization": f"Bearer {self.access_token}"}
         self.get_account_number_hash_value()
 
-    def refresh_access_token(self):
-        # Custom function to retrieve access token from Firestore
-        self.access_token = retrieve_firestore_value(
-            collection_id="your-collection-id",
-            document_id="your-doc-id",
-            key="your-access-token",
-        )
-
     def get_account_number_hash_value(self):
         response = requests.get(
             self.base_url + f"/accounts/accountNumbers", headers=self.headers
@@ -195,7 +187,7 @@ def stream_data():
 
     asyncio.run(read_stream())
 
-def _params_parser(params):
+def params_parser(params):
         """
         Removes None (null) values
         :param params: params to remove None values from
@@ -291,6 +283,25 @@ def main(args):
     os.environ['super_secret_sauce'] = password
 
     install_path = Path(args.path)
+
+    if args.refresh_token == True:
+        token_path = os.path.join(install_path, "tokens.yaml")
+        cred_path = os.path.join(install_path, "schwab-credentials.yaml")
+
+        token_data = decrypt_file_with_password(token_path)
+        cred_data = decrypt_file_with_password(cred_path)
+
+        os.environ['secret_refresh_token'] = token_data['refresh_token']
+        os.environ['secret_app_id']        = cred_data['app_key']
+        os.environ['secret_app_secret']    = cred_data['app_secret']
+
+        thing= os.getenv('secret_refresh_token')
+        print(thing)
+        refresh_tokens()
+        exit()
+
+
+
     if args.get_cred == True:
         if install_path.exists(): # Check that ".schwab_auto_trade" exists in ~
             token_path = os.path.join(install_path, "tokens.yaml")

@@ -6,11 +6,9 @@ from loguru import logger
 
 # 
 def refresh_tokens():
-    
-
-    app_key = "your-app-key"
-    app_secret = "your-app-secret"
-    refresh_token_value = "your-current-refresh-token"
+    app_key = os.getenv('secret_app_id')
+    app_secret = os.getenv('secret_app_secret')
+    refresh_token_value = os.getenv('secret_refresh_token')
 
     payload = {
         "grant_type": "refresh_token",
