@@ -25,6 +25,7 @@ from pathlib import Path
 # Local File Imports
 from encryption import set_encryption, retrieve_encrypted_data, encrypt_file_with_password, decrypt_file_with_password
 from refresh import refresh_tokens
+from trader import run_trade
 #from refresh.py as refresh
 
 from dotenv import load_dotenv
@@ -223,6 +224,20 @@ def time_convert(self, dt=None, form="8601"):
         else:
             return dt
 
+def sanity_check(install_path):
+    token_path = os.path.join(install_path, "tokens.yaml")
+    token_data = decrypt_file_with_password(token_path)
+    access_token = token_data['access_token']
+
+
+    hash= requests.get(f'https://api.schwabapi.com/trader/v1/accounts/accountNumbers',
+                            headers={'Authorization': f'Bearer {access_token}'},
+                            timeout=5)
+    hash = hash.json()
+    print(hash)
+    
+
+
 
 def get_data_test():
     _base_api_url = "https://api.schwabapi.com"
@@ -281,8 +296,8 @@ def main(args):
     password = getpass("Enter encryption password to secure schwab-credentials and schwab-tokens.\n"
                        "If you have already entered this, please submit the password you set. ")
     os.environ['super_secret_sauce'] = password
-
     install_path = Path(args.path)
+    sanity_check(install_path)
 
     if args.refresh_token == True:
         token_path = os.path.join(install_path, "tokens.yaml")
@@ -297,8 +312,10 @@ def main(args):
 
         thing= os.getenv('secret_refresh_token')
         print(thing)
-        refresh_tokens()
-        exit()
+        data=refresh_tokens()
+        with open(token_path, 'w') as yaml_file:
+            yaml.dump(data, yaml_file, default_flow_style=False)
+        encrypt_file_with_password(token_path)
 
 
 
@@ -324,7 +341,8 @@ def main(args):
                     exit()
                 else:
                     print("Ready to execute trade scripts!")
-                    get_data_test()
+                    #run_trade()
+                    #get_data_test()
                     #execute_trade() # Doesn't exist yet. 
                     exit()
             else:

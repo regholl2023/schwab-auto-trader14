@@ -36,6 +36,9 @@ def refresh_tokens():
 
     logger.debug(refresh_token_dict)
 
+    
+    os.environ['secret_access_token'] = refresh_token_dict['access_token']
+
     logger.info("Token dict refreshed.")
 
-    return "Done!"
+    return refresh_token_dict
