@@ -20,7 +20,7 @@ from pathlib import Path
 
 # Local File Imports
 # ------------------ #
-from encryption import decrypt_file_with_password
+from encryption import decrypt_file_with_password, encrypt_file_with_password
 
 logging.basicConfig(
     level=logging.ERROR,
@@ -34,7 +34,6 @@ def global_error(message):
 
 class Tokens:
     
-
     def __init__(self, args):
         self.base_url =  "https://api.schwabapi.com/trader/v1"
         self.base_install = args.install_path
@@ -52,8 +51,6 @@ class Tokens:
         token_cred = self.get_token_creds()
         self.refresh_token = token_cred['refresh_token']
         self.access_token = token_cred['access_token']
-        print(self.access_token)
-
 
     def get_app_creds(self):
         if os.path.isfile(self.credfile):
@@ -137,11 +134,55 @@ class Tokens:
         app_key, app_secret, cs_auth_url = self.construct_init_auth_url()
         webbrowser.open(cs_auth_url)
         logging.info("Paste Returned URL:")
-        returned_url = input()
+        returned_url = input("\nPaste Returned URL:")
         init_token_headers, init_token_payload = self.construct_headers_and_payload(returned_url, app_key, app_secret)
         init_tokens_dict = self.retrieve_tokens(headers=init_token_headers, payload=init_token_payload)
-        if os.path.isfile(self.tokensfile): #We are resetting tokens so delete if present. 
-            os.remove(self.tokensfile)
-        with open(self.tokensfile, 'w') as yaml_file:
+        if os.path.isfile(self.tokenfile): #We are resetting tokens so delete if present. 
+            os.remove(self.tokenfile)
+        with open(self.tokenfile, 'w') as yaml_file:
             yaml.dump(init_tokens_dict, yaml_file, default_flow_style=False)
+        encrypt_file_with_password(self.tokenfile)
+
+
+    def _refresh_token(self):
+        app_cred = self.get_app_creds() # Retrieve 
+        app_key = app_cred['app_key']
+        app_secret = app_cred['app_secret']
+        token_cred = self.get_token_creds()
+        refresh_cred = token_cred['refresh_token']
+
+        payload = {
+            "grant_type": "refresh_token",
+            "refresh_token": refresh_cred,
+        }
+        headers = {
+            "Authorization": f'Basic {base64.b64encode(f"{app_key}:{app_secret}".encode()).decode()}',
+            "Content-Type": "application/x-www-form-urlencoded",
+        }
+
+        refresh_token_response = requests.post(
+            url="https://api.schwabapi.com/v1/oauth/token",
+            headers=headers,
+            data=payload,
+        )
+        if refresh_token_response.status_code == 200:
+            logging.info("Retrieved new tokens successfully using refresh token.")
+        else:
+            logging.error(
+                f"Error refreshing access token: {refresh_token_response.text}"
+            )
+            return None
+
+        refresh_token_dict = refresh_token_response.json()
+        if os.path.isfile(self.tokenfile): #We are resetting tokens so delete if present. 
+            os.remove(self.tokenfile)
+        with open(self.tokenfile, 'w') as yaml_file:
+            yaml.dump(refresh_token_dict, yaml_file, default_flow_style=False)
+        encrypt_file_with_password(self.tokenfile)
+
+        #logging.debug(refresh_token_dict)
+        os.environ['secret_access_token'] = refresh_token_dict['access_token']
+        logging.info("Token dict refreshed.")
+
+        return refresh_token_dict
 

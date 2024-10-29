@@ -28,6 +28,8 @@ def derive_key_from_password(password, salt):
 
 def encrypt_file_with_password(file_path):
     password = os.getenv("super_secret_sauce")
+    if not password:
+        raise ValueError("Environment variable 'super_secret_sauce' is not set.")
     salt = os.urandom(16)  # Generate a new salt
     key = derive_key_from_password(password, salt)
     fernet = Fernet(key)
@@ -36,6 +38,8 @@ def encrypt_file_with_password(file_path):
         original_data = file.read()
     
     encrypted_data = fernet.encrypt(original_data)
+
+    print(encrypted_data)
     
     # Write the salt and encrypted data to a new file
     with open(file_path, 'wb') as encrypted_file:
@@ -72,8 +76,8 @@ def set_encryption(file_path):
     # We will have finite schwab.yaml files so its okay to just pass these two in. 
     app_path = os.path.join(file_path, "schwab-credentials.yaml")
     token_path = os.path.join(file_path, "tokens.yaml")
-    encrypt_file_with_password(app_path, password)
-    encrypt_file_with_password(token_path, password)
+    encrypt_file_with_password(app_path)
+    encrypt_file_with_password(token_path)
 
 def retrieve_encrypted_data(password, file_path):
     password = password
