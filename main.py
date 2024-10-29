@@ -1,9 +1,14 @@
 # Not needed atm. 
 # Beep Beep Beep!
 from tokens import Tokens
+from trader import Trader
 import argparse
 import os
 from getpass import getpass
+import yaml 
+
+from log import Log
+from encryption import encrypt_file_with_password
 
 if __name__ == "__main__":
     # Arguemnts that you can pass in with "python3 schwab.py --startup etc etc", self explanitory.
@@ -18,7 +23,34 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
 password = getpass("Enter encryption password to secure schwab-credentials and schwab-tokens.\n"
-                       "If you have already entered this, please submit the password you set. ")
+                   "If you have already entered this, please submit the password you set. ")
 os.environ['super_secret_sauce'] = password
 
+tokens_file = os.path.join(args.install_path, 'tokens.yaml')
+timer_file = os.path.join(args.install_path, 'timer.yaml')
+credentials_file = os.path.join(args.install_path, 'schwab-credentials.yaml')
+
+if os.path.isfile(tokens_file) == False: 
+      with open(tokens_file, "w") as file:
+          pass
+
+if os.path.isfile(timer_file) == False:
+      with open(timer_file, "w") as file:
+          pass
+
+if os.path.isfile(credentials_file) == False: 
+    if os.path.getsize(credentials_file) == 0: # schwab-credentials appears empty 
+                print("We've detected an Empty Schwab Credential file! This will be saved in an encryped file at "+str(credentials_file))
+                app_key = input("Please provide your APP_KEY [found on developer.schwab.com]: ")
+                app_secret = input("Please provide your APP_SECRET [found on developer.schwab.com]: ")
+                data = {'app_key': app_key, 'app_secret': app_secret}
+                with open(credentials_file, 'w') as yaml_file:
+                    yaml.dump(data, yaml_file, default_flow_style=False)
+                encrypt_file_with_password(credentials_file)
+    
+                           
+
 trader = Tokens(args)
+#trader._refresh_token()
+
+# Below imports trade code to exectue
