@@ -1,7 +1,7 @@
 # tokens.py 
 # Schwab Token file contains authentication info for schwab api.
 # Author: Calvin Seamons
-# Last Updated: 24 October, 2024
+# Last Updated: 05 November, 2024
 
 # Imports
 # ------------------ #
@@ -16,21 +16,12 @@ import yaml
 
 # From Imports
 # ------------------ #
+from log_obj import Log
 from pathlib import Path
 
 # Local File Imports
 # ------------------ #
 from encryption import decrypt_file_with_password, encrypt_file_with_password
-
-logging.basicConfig(
-    level=logging.ERROR,
-    format="\033[91m[ Error ] %(message)s\033[0m"
-)
-
-def global_error(message):
-    logging.error(message)
-    sys.exit(1)
-
 
 class Tokens:
     
@@ -39,7 +30,8 @@ class Tokens:
         self.base_install = args.install_path
         self.tokenfile = os.path.join(self.base_install, 'tokens.yaml')
         self.credfile = os.path.join(self.base_install, 'schwab-credentials.yaml')
-
+        self.timefile = os.path.join(self.base_install, 'timer.yaml')
+        self.log = Log()
 
         time_experation = self.check_time()
         if time_experation == True or args.startup == True:
@@ -60,15 +52,15 @@ class Tokens:
                 schwab_cred['app_secret'] is not None and schwab_cred['app_secret'] != "":
                 return schwab_cred
             else:
-                global_error("Missing app_key or app_secret in schwab_credentials.yaml. run --startup.")
+                self.log.error("Missing app_key or app_secret in schwab_credentials.yaml. run --startup.")
         else:
-            global_error("schwab-credentials.yaml doesn't exist in ~/.schwab_auto_trader. run --startup.")
+            self.log.error("schwab-credentials.yaml doesn't exist in ~/.schwab_auto_trader. run --startup.")
 
     def get_token_creds(self):
         if os.path.isfile(self.tokenfile):
             return decrypt_file_with_password(self.tokenfile)
         else:
-            global_error("tokens.yaml doesn't exist in ~/.schwab_auto_trader. run --startup.")
+            self.log.error("tokens.yaml doesn't exist in ~/.schwab_auto_trader. run --startup.")
 
     def check_time(self): # Checks the experation time of the tokenfile. 
         exp = os.path.getmtime(self.tokenfile)
@@ -77,7 +69,7 @@ class Tokens:
         if token_age > 604800: # Your token is most likely expired, refresh needed.
             return True
         elif token_age > 475200: # If token file hasn't been updated in 5days12hr it is expiring soon.
-            logging.warning("Your refresh may expire soon. Please run --startup")
+            self.log.info("Your refresh token may expire soon. Please run --startup")
             return False
         else:
             # Everything is fine.
@@ -89,7 +81,7 @@ class Tokens:
             app_key    = data['app_key']
             app_secret = data['app_secret']
         except Exception as e:
-            global_error(e)
+            self.log.error(e)
         
         auth_url = f"https://api.schwabapi.com/v1/oauth/authorize?client_id={app_key}&redirect_uri=https://127.0.0.1"
 
@@ -165,17 +157,26 @@ class Tokens:
             headers=headers,
             data=payload,
         )
+
         if refresh_token_response.status_code == 200:
-            logging.info("Retrieved new tokens successfully using refresh token.")
+            self.log.success("Retrieved new tokens successfully using refresh token.")
         else:
-            logging.error(
+            self.log.error(
                 f"Error refreshing access token: {refresh_token_response.text}"
             )
             return None
 
         refresh_token_dict = refresh_token_response.json()
+
+        refresh_token_time = time.time()
+        refresh_data = {'access_token_time': refresh_token_time}
+
+        with open(self.timefile, 'w') as yaml_file:
+            yaml.dump(refresh_data, yaml_file, default_flow_style=False)
+
         if os.path.isfile(self.tokenfile): #We are resetting tokens so delete if present. 
             os.remove(self.tokenfile)
+
         with open(self.tokenfile, 'w') as yaml_file:
             yaml.dump(refresh_token_dict, yaml_file, default_flow_style=False)
         encrypt_file_with_password(self.tokenfile)

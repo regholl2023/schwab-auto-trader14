@@ -7,7 +7,7 @@ import os
 from getpass import getpass
 import yaml 
 
-from log import Log
+from log_obj import Log
 from encryption import encrypt_file_with_password
 
 if __name__ == "__main__":
