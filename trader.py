@@ -6,8 +6,11 @@ import requests
 import urllib.parse
 import json
 
+from tokens import Tokens
+
 class Trader:
     
 
     def __init__(self):
-        print("yucky")
+        self.tk = Tokens()
+        

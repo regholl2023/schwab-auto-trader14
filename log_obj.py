@@ -6,6 +6,7 @@ class Log:
     YELLOW = "\033[93m"
     RED = "\033[91m"
     RESET = "\033[0m"
+    ORANGE = "\033[38;5;214m"
 
     def __init__(self):
         self.logger = logging.getLogger("CustomLogger")
@@ -29,4 +30,11 @@ class Log:
     def error(self, message):
         """Log an error message in red."""
         self.logger.error(f"{self.RED}[ERROR] {message}{self.RESET}")
+
+    def warning(self, message):
+        """Log an warning message in orange."""
+        self.logger.warning(f"{self.ORANGE}[WARNING] {message}{self.RESET}")
+
+
+
         
