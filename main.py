@@ -1,5 +1,4 @@
-# Not needed atm. 
-# Beep Beep Beep!
+# Main method that takes in any commandline args and creates any missing config files.
 from tokens import Tokens
 from trader import Trader
 import argparse
@@ -25,6 +24,7 @@ if __name__ == "__main__":
 password = getpass("Enter encryption password to secure schwab-credentials and schwab-tokens.\n"
                    "If you have already entered this, please submit the password you set. ")
 os.environ['super_secret_sauce'] = password
+password = None
 
 tokens_file = os.path.join(args.install_path, 'tokens.yaml')
 timer_file = os.path.join(args.install_path, 'timer.yaml')
@@ -36,7 +36,8 @@ if os.path.isfile(tokens_file) == False:
 
 if os.path.isfile(timer_file) == False:
       with open(timer_file, "w") as file:
-          pass
+          filler = {'refresh_token_time': 0, 'access_token_time': 0}
+          yaml.dump(filler, file, default_flow_style=False)
 
 if os.path.isfile(credentials_file) == False: 
     if os.path.getsize(credentials_file) == 0: # schwab-credentials appears empty 
@@ -50,7 +51,9 @@ if os.path.isfile(credentials_file) == False:
     
                            
 
-trader = Tokens(args)
-#trader._refresh_token()
-
+trader = Trader(args)
+# trader.get_account_balance()
+# trader._refresh_token()
+# trader.quote('AAPL')
+trader.test2()
 # Below imports trade code to exectue
