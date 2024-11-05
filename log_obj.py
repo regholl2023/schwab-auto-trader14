@@ -1,6 +1,7 @@
 # Logger class for Logs!
 
 import logging
+import sys
 class Log:
     GREEN = "\033[92m"
     YELLOW = "\033[93m"
@@ -27,10 +28,14 @@ class Log:
         """Log an info message in yellow."""
         self.logger.info(f"{self.YELLOW}[INFO] {message}{self.RESET}")
 
-    def error(self, message):
+    def error(self, message, kill=False):
         """Log an error message in red."""
         self.logger.error(f"{self.RED}[ERROR] {message}{self.RESET}")
-
+        if kill == True: # If the error requires killing the program check param. 
+            sys.exit(1)
+        else:
+            pass
+    
     def warning(self, message):
         """Log an warning message in orange."""
         self.logger.warning(f"{self.ORANGE}[WARNING] {message}{self.RESET}")

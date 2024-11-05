@@ -26,7 +26,7 @@ from encryption import decrypt_file_with_password, encrypt_file_with_password
 class Tokens:
     
     def __init__(self, args):
-        self.base_url =  "https://api.schwabapi.com/trader/v1"
+        self.base_url =  "https://api.schwabapi.com"
         self.base_install = args.install_path
         self.tokenfile = os.path.join(self.base_install, 'tokens.yaml')
         self.credfile = os.path.join(self.base_install, 'schwab-credentials.yaml')
@@ -40,9 +40,25 @@ class Tokens:
             self.app_secret = cred['app_secret']
             self.build_cred()
 
+        if args.refresh_token == True:
+            self._refresh_token()
+            
         token_cred = self.get_token_creds()
         self.refresh_token = token_cred['refresh_token']
         self.access_token = token_cred['access_token']
+        self.account_hash = self.get_account_hash()
+
+
+    def get_account_hash(self):
+        try:
+            hash = requests.get(f'https://api.schwabapi.com/trader/v1/accounts/accountNumbers',
+                           headers={'Authorization': f'Bearer {self.access_token}'},
+                            timeout=5)
+            hash = hash.json()
+            return hash
+        except Exception as e:
+            self.log.error("Unable to get AccountHash. Account Trades cannot be conducted.",True)
+
 
     def get_app_creds(self):
         if os.path.isfile(self.credfile):
@@ -63,13 +79,19 @@ class Tokens:
             self.log.error("tokens.yaml doesn't exist in ~/.schwab_auto_trader. run --startup.")
 
     def check_time(self): # Checks the experation time of the tokenfile. 
-        exp = os.path.getmtime(self.tokenfile)
+        try:
+            with open(self.timefile, 'rb') as timefile:
+                data = yaml.safe_load(timefile)
+            old_time = data['refresh_token_time']     
+        except Exception as e:
+            self.log.error(e + " Something went wrong, check the timer.yaml file")
+
         current_time = time.time()
-        token_age = current_time-exp
+        token_age = current_time-old_time
         if token_age > 604800: # Your token is most likely expired, refresh needed.
             return True
         elif token_age > 475200: # If token file hasn't been updated in 5days12hr it is expiring soon.
-            self.log.info("Your refresh token may expire soon. Please run --startup")
+            self.log.warning("Your refresh token may expire soon. Please run --startup")
             return False
         else:
             # Everything is fine.
@@ -85,9 +107,7 @@ class Tokens:
         
         auth_url = f"https://api.schwabapi.com/v1/oauth/authorize?client_id={app_key}&redirect_uri=https://127.0.0.1"
 
-        logging.info("Click to authenticate:")
-        logging.info(auth_url)
-
+        self.log.info("Click to authenticate:")
         return app_key, app_secret, auth_url
 
     def construct_headers_and_payload(self,returned_url, app_key, app_secret):
@@ -119,22 +139,29 @@ class Tokens:
         )
 
         init_tokens_dict = init_token_response.json()
-
         return init_tokens_dict
 
     def build_cred(self):
         app_key, app_secret, cs_auth_url = self.construct_init_auth_url()
         webbrowser.open(cs_auth_url)
-        logging.info("Paste Returned URL:")
+        self.log.info("Paste Returned URL:")
         returned_url = input("\nPaste Returned URL:")
         init_token_headers, init_token_payload = self.construct_headers_and_payload(returned_url, app_key, app_secret)
         init_tokens_dict = self.retrieve_tokens(headers=init_token_headers, payload=init_token_payload)
+        self.log.success("Authentication with Schwab successful.")
+
+        # Setting timer file so track refresh token expiration 
+        refresh_token_time = time.time() # Both access and refresh are reset here so i reuse the var.
+        refresh_data = {'refresh_token_time': refresh_token_time, 'access_token_time': refresh_token_time}
+        with open(self.timefile, 'w') as yaml_file:
+            yaml.dump(refresh_data, yaml_file, default_flow_style=False)
+
+
         if os.path.isfile(self.tokenfile): #We are resetting tokens so delete if present. 
             os.remove(self.tokenfile)
         with open(self.tokenfile, 'w') as yaml_file:
             yaml.dump(init_tokens_dict, yaml_file, default_flow_style=False)
         encrypt_file_with_password(self.tokenfile)
-
 
     def _refresh_token(self):
         app_cred = self.get_app_creds() # Retrieve 
@@ -168,8 +195,8 @@ class Tokens:
 
         refresh_token_dict = refresh_token_response.json()
 
-        refresh_token_time = time.time()
-        refresh_data = {'access_token_time': refresh_token_time}
+        access_token_time = time.time()
+        refresh_data = {'access_token_time': access_token_time}
 
         with open(self.timefile, 'w') as yaml_file:
             yaml.dump(refresh_data, yaml_file, default_flow_style=False)
@@ -181,9 +208,8 @@ class Tokens:
             yaml.dump(refresh_token_dict, yaml_file, default_flow_style=False)
         encrypt_file_with_password(self.tokenfile)
 
-        #logging.debug(refresh_token_dict)
         os.environ['secret_access_token'] = refresh_token_dict['access_token']
-        logging.info("Token dict refreshed.")
+        self.log.info("Token dict refreshed.")
 
         return refresh_token_dict
 
