@@ -42,7 +42,7 @@ class Tokens:
 
         if args.refresh_token == True:
             self._refresh_token()
-            
+
         token_cred = self.get_token_creds()
         self.refresh_token = token_cred['refresh_token']
         self.access_token = token_cred['access_token']
@@ -78,23 +78,29 @@ class Tokens:
         else:
             self.log.error("tokens.yaml doesn't exist in ~/.schwab_auto_trader. run --startup.")
 
-    def check_time(self): # Checks the experation time of the tokenfile. 
+    def check_time(self): # Checks the experation time of the tokenfile.
+        current_time = time.time() # Get Current Time.
         try:
             with open(self.timefile, 'rb') as timefile:
                 data = yaml.safe_load(timefile)
-            old_time = data['refresh_token_time']     
+            old_refresh_time = data['refresh_token_time']  
+            old_access_time = data['access_token_time']  
         except Exception as e:
-            self.log.error(e + " Something went wrong, check the timer.yaml file")
+            self.log.error(str(e) + " Something went wrong, check the timer.yaml file and make sure there at ints set.")
 
-        current_time = time.time()
-        token_age = current_time-old_time
-        if token_age > 604800: # Your token is most likely expired, refresh needed.
+        access_time = current_time - old_access_time # Age of Schwab Access Token.
+        refresh_time = current_time - old_refresh_time # Age of Schwab Refresh Token.
+
+        if  access_time > 1700 and refresh_time < 475200:
+            self._refresh_token()
+            # We dont return becuase we still want to see refresh age.
+        elif refresh_time > 604800: # Your token is most likely expired, refresh needed.
             return True
-        elif token_age > 475200: # If token file hasn't been updated in 5days12hr it is expiring soon.
+        elif refresh_time > 475200: # If token file hasn't been updated in 5days12hr it is expiring soon.
             self.log.warning("Your refresh token may expire soon. Please run --startup")
             return False
         else:
-            # Everything is fine.
+            # Everything is fine, access still working and refresh less than 5 days old.
             return False
 
     def construct_init_auth_url(self) -> tuple[str, str, str]:
@@ -150,7 +156,8 @@ class Tokens:
         init_tokens_dict = self.retrieve_tokens(headers=init_token_headers, payload=init_token_payload)
         self.log.success("Authentication with Schwab successful.")
 
-        # Setting timer file so track refresh token expiration 
+        # Setting timer file to track refresh token expiration 
+        # We can use yaml.dump becuase all values need to be changed so we just overwrite it.
         refresh_token_time = time.time() # Both access and refresh are reset here so i reuse the var.
         refresh_data = {'refresh_token_time': refresh_token_time, 'access_token_time': refresh_token_time}
         with open(self.timefile, 'w') as yaml_file:
@@ -198,7 +205,16 @@ class Tokens:
         access_token_time = time.time()
         refresh_data = {'access_token_time': access_token_time}
 
-        with open(self.timefile, 'w') as yaml_file:
+        with open(self.timefile, 'r') as yaml_file:
+            yaml_content = yaml.safe_load(yaml_file)
+            for key, value in refresh_data.items():
+                if isinstance(value, dict) and key in yaml_content:
+                    yaml_content[key].update(value)
+                else:
+                    yaml_content[key] = value
+            # Write the updated content back to the file
+        with open(self.timefile, 'w') as file:
+            print(str(refresh_data))
             yaml.dump(refresh_data, yaml_file, default_flow_style=False)
 
         if os.path.isfile(self.tokenfile): #We are resetting tokens so delete if present. 
