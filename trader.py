@@ -59,4 +59,37 @@ class Trader:
         data = data.json()
         print(data)
 
+
+    def endpoint_discovery(self):
+        data = requests.get(f'{self.tokens.base_url}/marketdata/v1',
+                             headers = {'Authorization': f'Bearer {self.tokens.access_token}'},
+                             params=None)
+        
+        data = data.json()
+        print(data)
+
+    def account_info_stock_holdings(self):
+        hash = str(self.tokens.account_hash[0]['accountNumber'])
+        url = self.tokens.base_url + f'trader/v1/accounts'
+        headers = {"Authorization": "Bearer " + self.tokens.access_token}
+        payload = ({'symbol': 'AAPL'})
+
+        data = requests.get(f'{self.tokens.base_url}/trader/v1/accounts',
+                            headers={'Authorization': f'Bearer {self.tokens.access_token}'},
+                            params=(None))
+
+        #response = requests.get(url, headers=headers, params=payload)
+
+        if data.status_code == 200:
+            data = data.json()
+            #share_count = data["positionQuantity"]  
+            #print(f"You own {share_count} shares of AAPL") 
+            print(data)
+        else:
+            print("You are a Retard , fuck you! -- ", data.status_code)
+            data = data.json()
+            print(data)
+
+
+
         

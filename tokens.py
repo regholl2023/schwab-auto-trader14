@@ -80,11 +80,13 @@ class Tokens:
 
     def check_time(self): # Checks the experation time of the tokenfile.
         current_time = time.time() # Get Current Time.
+        access_time = None
+        refresh_time = None
         try:
             with open(self.timefile, 'rb') as timefile:
                 data = yaml.safe_load(timefile)
-            old_refresh_time = data['refresh_token_time']  
-            old_access_time = data['access_token_time']  
+                old_refresh_time = data['refresh_token_time']  
+                old_access_time = data['access_token_time']  
         except Exception as e:
             self.log.error(str(e) + " Something went wrong, check the timer.yaml file and make sure there at ints set.")
 
@@ -207,15 +209,17 @@ class Tokens:
 
         with open(self.timefile, 'r') as yaml_file:
             yaml_content = yaml.safe_load(yaml_file)
+            print(yaml_content)
             for key, value in refresh_data.items():
                 if isinstance(value, dict) and key in yaml_content:
                     yaml_content[key].update(value)
                 else:
                     yaml_content[key] = value
             # Write the updated content back to the file
+            print(yaml_content)
         with open(self.timefile, 'w') as file:
-            print(str(refresh_data))
-            yaml.dump(refresh_data, yaml_file, default_flow_style=False)
+            #print(str(refresh_data))
+            yaml.dump(yaml_content, file, default_flow_style=False)
 
         if os.path.isfile(self.tokenfile): #We are resetting tokens so delete if present. 
             os.remove(self.tokenfile)
