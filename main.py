@@ -34,7 +34,7 @@ if os.path.isfile(tokens_file) == False:
       with open(tokens_file, "w") as file:
           pass
 
-if os.path.isfile(timer_file) == False:
+if os.path.isfile(timer_file) == False or os.path.getsize(timer_file) == 0:
       with open(timer_file, "w") as file:
           filler = {'refresh_token_time': 0, 'access_token_time': 0}
           yaml.dump(filler, file, default_flow_style=False)
@@ -51,9 +51,14 @@ if os.path.isfile(credentials_file) == False:
     
                            
 
-trader = Trader(args)
+trader = Trader(args) # Create the Trader Object.
+# ----------------------------------------- Trade Functions -------------------------------------- #
+# In the following code you can either manually creates trade calls here, or import from examples.py
+# ------------------------------------------------------------------------------------------------ #
+
+
 # trader.get_account_balance()
 # trader._refresh_token()
 # trader.quote('AAPL')
-trader.test2()
+# trader.test2() Only working trade call ATM lol. 
 # Below imports trade code to exectue
