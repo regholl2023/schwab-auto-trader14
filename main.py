@@ -57,8 +57,10 @@ trader = Trader(args) # Create the Trader Object.
 # ------------------------------------------------------------------------------------------------ #
 
 
-# trader.get_account_balance()
-# trader._refresh_token()
-# trader.quote('AAPL')
-# trader.test2() Only working trade call ATM lol. 
+# trader.get_account_balance() # Doesnt work lol
+# trader.quote('AAPL') # Doesnt work lol
+# trader.test2() #Only working trade call ATM lol.  
 # Below imports trade code to exectue
+# trader.endpoint_discovery()
+trader.account_info_stock_holdings()
+
